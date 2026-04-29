@@ -1,0 +1,35 @@
+CC     = gcc
+CFLAGS = -Wall -Wextra -O2  
+
+build {
+    @desc Compile test.c
+    $CC $CFLAGS test.c -o test
+}
+
+run {
+    @desc Build and run
+    @deps build              
+    ./test
+}
+
+test {
+    @desc Run with platform checks
+    @deps build
+    if $$OS == linux {
+        echo "Running on Linux ($$ARCH)"
+        ./test
+    } else if $$OS == macos {
+        echo "Running on macOS ($$ARCH)"
+        ./test
+    } else {
+        echo "Unsupported OS: $$OS"
+    }
+}
+
+clean {
+    @desc Remove build artifacts
+    @ignore
+    rm -f test
+}
+
+# THIS IS A COMMENT, ISN'T THIS COOL???

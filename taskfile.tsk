@@ -1,0 +1,58 @@
+BIN  = tsk
+INSTALL = /usr/bin
+
+build {
+    @default
+    @desc Build release binary 
+    cargo build --release
+}
+
+dev {
+    @desc Build debug binary
+    cargo build
+}
+
+run {
+    @desc Build and run with --help
+    @deps build
+    ./target/release/$BIN --help
+}
+
+install {
+    @desc Install to $INSTALL (Will fail without sudo)
+    @deps build 
+    strip target/release/$BIN
+    rm -f $INSTALL/$BIN
+    cp target/release/$BIN $INSTALL/$BIN
+    echo "Installed"
+}
+
+remove {
+    @desc Remove from $INSTALL
+    @ignore
+    rm -f $INSTALL/$BIN
+    echo "Removed"
+}
+
+check {
+    @desc Run clippy and format check
+    cargo clippy -- -D warnings
+    cargo fmt --check
+}
+
+fmt {
+    @desc Format source code
+    cargo fmt
+}
+
+clean {
+    @desc Remove build artifacts
+    @ignore
+    cargo clean
+}
+
+
+ci {
+    @desc Full CI pipeline
+    @deps check build 
+}
