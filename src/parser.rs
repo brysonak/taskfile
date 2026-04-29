@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use crate::lexer::{lex, Token, TokenKind};
 use crate::error::{TskError, warn};
+use crate::lexer::{Token, TokenKind, lex};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub enum Condition {
@@ -31,8 +31,8 @@ pub enum Statement {
 
 #[derive(Debug, Clone, Default)]
 pub struct TaskFlags {
-    pub silent: bool,   // @silent — don't echo commands
-    pub ignore: bool,   // @ignore — continue on command failure
+    pub silent: bool, // @silent — don't echo commands
+    pub ignore: bool, // @ignore — continue on command failure
 }
 
 #[derive(Debug, Clone)]
@@ -61,24 +61,37 @@ struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn new(tokens: &'a [Token], file: &'a str) -> Self {
-        Parser { tokens, pos: 0, file }
+        Parser {
+            tokens,
+            pos: 0,
+            file,
+        }
     }
 
-    fn peek(&self) -> &Token { &self.tokens[self.pos] }
+    fn peek(&self) -> &Token {
+        &self.tokens[self.pos]
+    }
 
     fn advance(&mut self) -> &Token {
         let t = &self.tokens[self.pos];
-        if self.pos + 1 < self.tokens.len() { self.pos += 1; }
+        if self.pos + 1 < self.tokens.len() {
+            self.pos += 1;
+        }
         t
     }
 
     fn skip_newlines(&mut self) {
-        while matches!(self.peek().kind, TokenKind::Newline) { self.advance(); }
+        while matches!(self.peek().kind, TokenKind::Newline) {
+            self.advance();
+        }
     }
 
     fn expect_newline(&mut self) -> Result<(), TskError> {
         match self.peek().kind {
-            TokenKind::Newline | TokenKind::Eof => { self.advance(); Ok(()) }
+            TokenKind::Newline | TokenKind::Eof => {
+                self.advance();
+                Ok(())
+            }
             _ => {
                 let t = self.peek().clone();
                 Err(TskError::syntax(self.file, t.line, "expected newline"))
@@ -90,8 +103,12 @@ impl<'a> Parser<'a> {
         self.skip_newlines();
         let t = self.peek().clone();
         match t.kind {
-            TokenKind::LBrace => { self.advance(); self.skip_newlines(); Ok(t.line) }
-            _ => Err(TskError::syntax(self.file, t.line, "expected '{'"))
+            TokenKind::LBrace => {
+                self.advance();
+                self.skip_newlines();
+                Ok(t.line)
+            }
+            _ => Err(TskError::syntax(self.file, t.line, "expected '{'")),
         }
     }
 
@@ -99,8 +116,12 @@ impl<'a> Parser<'a> {
         self.skip_newlines();
         let t = self.peek().clone();
         match t.kind {
-            TokenKind::RBrace => { self.advance(); self.skip_newlines(); Ok(()) }
-            _ => Err(TskError::syntax(self.file, t.line, "expected '}'"))
+            TokenKind::RBrace => {
+                self.advance();
+                self.skip_newlines();
+                Ok(())
+            }
+            _ => Err(TskError::syntax(self.file, t.line, "expected '}'")),
         }
     }
 
@@ -130,15 +151,25 @@ impl<'a> Parser<'a> {
                         self.advance(); // consume `=`
                         let val_tok = self.peek().clone();
                         let value = match val_tok.kind {
-                            TokenKind::RawValue(ref v) => { self.advance(); v.clone() }
+                            TokenKind::RawValue(ref v) => {
+                                self.advance();
+                                v.clone()
+                            }
                             TokenKind::Newline | TokenKind::Eof => String::new(),
-                            _ => return Err(TskError::syntax(
-                                self.file, val_tok.line, "expected value after '='"
-                            )),
+                            _ => {
+                                return Err(TskError::syntax(
+                                    self.file,
+                                    val_tok.line,
+                                    "expected value after '='",
+                                ));
+                            }
                         };
                         self.expect_newline()?;
                         if globals.contains_key(&name) {
-                            warn(format!("variable '{}' redefined at line {}", name, var_line));
+                            warn(format!(
+                                "variable '{}' redefined at line {}",
+                                name, var_line
+                            ));
                         } else {
                             global_order.push(name.clone());
                         }
@@ -153,7 +184,9 @@ impl<'a> Parser<'a> {
                         let task = self.parse_task_block(&name, task_line)?;
                         self.expect_rbrace()?;
 
-                        if task.flags.silent == false && task.description.as_deref() == Some("@default") {
+                        if task.flags.silent == false
+                            && task.description.as_deref() == Some("@default")
+                        {
                         }
 
                         if tasks.contains_key(&name) {
@@ -172,8 +205,9 @@ impl<'a> Parser<'a> {
                 _ => {
                     let t = self.peek().clone();
                     return Err(TskError::syntax(
-                        self.file, t.line,
-                        format!("unexpected token at top level: {:?}", t.kind)
+                        self.file,
+                        t.line,
+                        format!("unexpected token at top level: {:?}", t.kind),
                     ));
                 }
             }
@@ -206,7 +240,10 @@ impl<'a> Parser<'a> {
                         "@desc" => {
                             self.advance();
                             let val = match self.peek().kind.clone() {
-                                TokenKind::RawValue(v) => { self.advance(); v }
+                                TokenKind::RawValue(v) => {
+                                    self.advance();
+                                    v
+                                }
                                 _ => String::new(),
                             };
                             description = Some(val);
@@ -250,7 +287,10 @@ impl<'a> Parser<'a> {
                             let cmd_line = self.peek().line;
                             self.advance();
                             self.skip_newlines();
-                            body.push(Statement::Command { raw: kw, line: cmd_line });
+                            body.push(Statement::Command {
+                                raw: kw,
+                                line: cmd_line,
+                            });
                         }
                     }
                 }
@@ -259,19 +299,31 @@ impl<'a> Parser<'a> {
                     let cmd_line = self.peek().line;
                     self.advance();
                     self.skip_newlines();
-                    body.push(Statement::Command { raw: cmd, line: cmd_line });
+                    body.push(Statement::Command {
+                        raw: cmd,
+                        line: cmd_line,
+                    });
                 }
 
                 _ => {
                     let t = self.peek().clone();
                     return Err(TskError::syntax(
-                        self.file, t.line, "unexpected token in task body"
+                        self.file,
+                        t.line,
+                        "unexpected token in task body",
                     ));
                 }
             }
         }
 
-        Ok(Task { name: name.to_string(), description, deps, flags, body, is_default })
+        Ok(Task {
+            name: name.to_string(),
+            description,
+            deps,
+            flags,
+            body,
+            is_default,
+        })
     }
 
     fn parse_if(&mut self, if_line: usize) -> Result<Statement, TskError> {
@@ -288,7 +340,9 @@ impl<'a> Parser<'a> {
                 TokenKind::Ident(k) if k == "else" => true,
                 _ => false,
             };
-            if !is_else { break; }
+            if !is_else {
+                break;
+            }
 
             let else_line = self.peek().line;
             self.advance(); // consume `else`
@@ -305,7 +359,10 @@ impl<'a> Parser<'a> {
                 self.expect_lbrace()?;
                 let body = self.parse_body_until_rbrace()?;
                 self.expect_rbrace()?;
-                else_ifs.push(ElseIf { condition: cond, body });
+                else_ifs.push(ElseIf {
+                    condition: cond,
+                    body,
+                });
             } else {
                 // plain `else`
                 self.expect_lbrace()?;
@@ -315,15 +372,30 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(Statement::If { condition, then_body, else_ifs, else_body, line: if_line })
+        Ok(Statement::If {
+            condition,
+            then_body,
+            else_ifs,
+            else_body,
+            line: if_line,
+        })
     }
 
     fn parse_condition(&mut self, if_line: usize) -> Result<Condition, TskError> {
         let lhs_tok = self.peek().clone();
         let lhs = match &lhs_tok.kind {
-            TokenKind::RawValue(v) => { self.advance(); v.clone() }
+            TokenKind::RawValue(v) => {
+                self.advance();
+                v.clone()
+            }
             TokenKind::LBrace => return Ok(Condition::Truthy("1".to_string())),
-            _ => return Err(TskError::syntax(self.file, if_line, "expected condition after 'if'")),
+            _ => {
+                return Err(TskError::syntax(
+                    self.file,
+                    if_line,
+                    "expected condition after 'if'",
+                ));
+            }
         };
 
         match self.peek().kind.clone() {
@@ -338,14 +410,21 @@ impl<'a> Parser<'a> {
                 Ok(Condition::NotEq(lhs, rhs))
             }
             TokenKind::LBrace | TokenKind::Newline => Ok(Condition::Truthy(lhs)),
-            _ => Err(TskError::syntax(self.file, if_line, "expected '==', '!=', or '{'"))
+            _ => Err(TskError::syntax(
+                self.file,
+                if_line,
+                "expected '==', '!=', or '{'",
+            )),
         }
     }
 
     fn expect_raw_value(&mut self) -> Result<String, TskError> {
         let t = self.peek().clone();
         match t.kind {
-            TokenKind::RawValue(v) => { self.advance(); Ok(v) }
+            TokenKind::RawValue(v) => {
+                self.advance();
+                Ok(v)
+            }
             _ => Err(TskError::syntax(self.file, t.line, "expected value")),
         }
     }
@@ -375,7 +454,11 @@ impl<'a> Parser<'a> {
                 }
                 _ => {
                     let t = self.peek().clone();
-                    return Err(TskError::syntax(self.file, t.line, "unexpected token inside block"));
+                    return Err(TskError::syntax(
+                        self.file,
+                        t.line,
+                        "unexpected token inside block",
+                    ));
                 }
             }
         }

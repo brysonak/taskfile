@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::process::Command;
 
-use crate::parser::{Condition, Statement, Task, Taskfile};
 use crate::error::TskError;
+use crate::parser::{Condition, Statement, Task, Taskfile};
 use crate::platform;
 
 pub struct Executor {
@@ -47,8 +47,13 @@ impl Executor {
     pub fn run(&mut self, task_name: &str) -> Result<(), TskError> {
         if self.running.contains(&task_name.to_string()) {
             return Err(TskError::runtime(
-                task_name, 0,
-                format!("circular dependency detected: {} -> {}", self.running.join(" -> "), task_name),
+                task_name,
+                0,
+                format!(
+                    "circular dependency detected: {} -> {}",
+                    self.running.join(" -> "),
+                    task_name
+                ),
                 None,
             ));
         }
@@ -61,10 +66,15 @@ impl Executor {
                 let list = if available.is_empty() {
                     "(none)".to_string()
                 } else {
-                    available.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")
+                    available
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 };
                 return Err(TskError::cli(format!(
-                    "task '{}' not found.\nAvailable tasks: {}", task_name, list
+                    "task '{}' not found.\nAvailable tasks: {}",
+                    task_name, list
                 )));
             }
         };
@@ -80,7 +90,6 @@ impl Executor {
         self.running.pop();
         Ok(())
     }
-
 
     fn exec_task(&mut self, task: &Task) -> Result<(), TskError> {
         // Collect the entire task body into a single shell script so that
@@ -114,7 +123,13 @@ impl Executor {
                     // Store raw, expand later at exec_line time
                     out.push((raw.clone(), *line, false));
                 }
-                Statement::If { condition, then_body, else_ifs, else_body, .. } => {
+                Statement::If {
+                    condition,
+                    then_body,
+                    else_ifs,
+                    else_body,
+                    ..
+                } => {
                     if self.eval_condition(condition) {
                         self.collect_statements(then_body, out)?;
                     } else {
@@ -146,7 +161,9 @@ impl Executor {
     ) -> Result<(), TskError> {
         let cmd_owned = self.expand(raw_cmd);
         let cmd = cmd_owned.trim();
-        if cmd.is_empty() { return Ok(()); }
+        if cmd.is_empty() {
+            return Ok(());
+        }
 
         if !silent && !self.dry_run {
             eprintln!("  \x1b[2m$ {}\x1b[0m", cmd);
@@ -172,22 +189,27 @@ impl Executor {
             .arg(&shell_flag)
             .arg(cmd)
             .status()
-            .map_err(|e| TskError::runtime(
-                task_name, line,
-                format!("failed to spawn '{}': {}", shell_bin, e),
-                Some(cmd.to_string()),
-            ))?;
+            .map_err(|e| {
+                TskError::runtime(
+                    task_name,
+                    line,
+                    format!("failed to spawn '{}': {}", shell_bin, e),
+                    Some(cmd.to_string()),
+                )
+            })?;
 
         if !status.success() {
             let code = status.code().unwrap_or(-1);
             if ignore {
                 crate::error::warn(format!(
-                    "task '{}' line {}: command exited {} (ignored)", task_name, line, code
+                    "task '{}' line {}: command exited {} (ignored)",
+                    task_name, line, code
                 ));
                 return Ok(());
             }
             return Err(TskError::runtime(
-                task_name, line,
+                task_name,
+                line,
                 format!("exited with status {}", code),
                 Some(cmd.to_string()),
             ));
@@ -202,9 +224,9 @@ impl Executor {
 
     fn eval_condition(&self, cond: &Condition) -> bool {
         match cond {
-            Condition::Eq(l, r)    => self.expand(l) == self.expand(r),
+            Condition::Eq(l, r) => self.expand(l) == self.expand(r),
             Condition::NotEq(l, r) => self.expand(l) != self.expand(r),
-            Condition::Truthy(v)   => {
+            Condition::Truthy(v) => {
                 let s = self.expand(v);
                 !s.is_empty() && s != "0" && s != "false"
             }
@@ -213,12 +235,12 @@ impl Executor {
 }
 
 // NOTE: because we run the entire task as separate shell invocations,
-// `cd` and `export` must remain built-ins that mutate the tsk process. 
+// `cd` and `export` must remain built-ins that mutate the tsk process.
 // For full shell-state sharing, wrap the whole task in a shell heredoc or use a shell script
 fn try_builtin(cmd: &str) -> Option<Result<(), String>> {
     let (verb, rest) = match cmd.find(char::is_whitespace) {
         Some(i) => (&cmd[..i], cmd[i..].trim()),
-        None    => (cmd, ""),
+        None => (cmd, ""),
     };
     match verb {
         "cd" => {
@@ -227,14 +249,15 @@ fn try_builtin(cmd: &str) -> Option<Result<(), String>> {
             } else {
                 rest.to_string()
             };
-            Some(std::env::set_current_dir(&dir)
-                .map_err(|e| format!("cd: {}: {}", dir, e)))
+            Some(std::env::set_current_dir(&dir).map_err(|e| format!("cd: {}: {}", dir, e)))
         }
         "export" => {
             if let Some(eq) = rest.find('=') {
                 let key = rest[..eq].trim();
-                let val = rest[eq+1..].trim();
-                unsafe {std::env::set_var(key, val);}
+                let val = rest[eq + 1..].trim();
+                unsafe {
+                    std::env::set_var(key, val);
+                }
             }
             Some(Ok(()))
         }
@@ -281,14 +304,14 @@ pub fn expand_vars(
                 // Fall through to real environment
                 out.push_str(&v);
             } else {
-                crate::error::warn(format!("unknown system variable '$${}'" , name));
+                crate::error::warn(format!("unknown system variable '$${}'", name));
             }
         } else if chars[i + 1] == '{' {
             i += 2;
             let end = chars[i..].iter().position(|&c| c == '}');
             match end {
                 Some(e) => {
-                    let name: String = chars[i..i+e].iter().collect();
+                    let name: String = chars[i..i + e].iter().collect();
                     i += e + 1;
                     if let Some(v) = user_vars.get(&name) {
                         out.push_str(v);
@@ -298,7 +321,9 @@ pub fn expand_vars(
                         crate::error::warn(format!("undefined variable '${{{}}}'", name));
                     }
                 }
-                None => { out.push_str("${"); }
+                None => {
+                    out.push_str("${");
+                }
             }
         } else {
             i += 1;

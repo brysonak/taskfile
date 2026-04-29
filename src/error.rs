@@ -6,9 +6,18 @@ pub enum TskError {
     /// Bad CLI invocation (exit 1)
     Cli(String),
     /// Syntax / parse error (exit 2)
-    Syntax { file: String, line: usize, message: String },
+    Syntax {
+        file: String,
+        line: usize,
+        message: String,
+    },
     /// Runtime error during task execution (exit 3)
-    Runtime { task: String, line: usize, message: String, command: Option<String> },
+    Runtime {
+        task: String,
+        line: usize,
+        message: String,
+        command: Option<String>,
+    },
 }
 
 impl TskError {
@@ -24,7 +33,12 @@ impl TskError {
         }
     }
 
-    pub fn runtime(task: impl Into<String>, line: usize, msg: impl Into<String>, cmd: Option<String>) -> Self {
+    pub fn runtime(
+        task: impl Into<String>,
+        line: usize,
+        msg: impl Into<String>,
+        cmd: Option<String>,
+    ) -> Self {
         TskError::Runtime {
             task: task.into(),
             line,
@@ -48,11 +62,24 @@ impl fmt::Display for TskError {
             TskError::Cli(msg) => {
                 write!(f, "tsk: {}\nRun 'tsk --help' for usage.", msg)
             }
-            TskError::Syntax { file, line, message } => {
+            TskError::Syntax {
+                file,
+                line,
+                message,
+            } => {
                 write!(f, "tsk: syntax error in {}:{}: {}", file, line, message)
             }
-            TskError::Runtime { task, line, message, command } => {
-                write!(f, "tsk: runtime error in task '{}' at line {}: {}", task, line, message)?;
+            TskError::Runtime {
+                task,
+                line,
+                message,
+                command,
+            } => {
+                write!(
+                    f,
+                    "tsk: runtime error in task '{}' at line {}: {}",
+                    task, line, message
+                )?;
                 if let Some(cmd) = command {
                     write!(f, "\n  command: {}", cmd)?;
                 }

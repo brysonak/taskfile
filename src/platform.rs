@@ -30,11 +30,21 @@ pub fn system_vars() -> HashMap<String, String> {
 }
 
 fn detect_os() -> String {
-    if cfg!(target_os = "linux")   { return "linux".to_string(); }
-    if cfg!(target_os = "macos")   { return "macos".to_string(); }
-    if cfg!(target_os = "windows") { return "windows".to_string(); }
-    if cfg!(target_os = "freebsd") { return "freebsd".to_string(); }
-    if cfg!(target_os = "openbsd") { return "openbsd".to_string(); }
+    if cfg!(target_os = "linux") {
+        return "linux".to_string();
+    }
+    if cfg!(target_os = "macos") {
+        return "macos".to_string();
+    }
+    if cfg!(target_os = "windows") {
+        return "windows".to_string();
+    }
+    if cfg!(target_os = "freebsd") {
+        return "freebsd".to_string();
+    }
+    if cfg!(target_os = "openbsd") {
+        return "openbsd".to_string();
+    }
     env::consts::OS.to_string()
 }
 

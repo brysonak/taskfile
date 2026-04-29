@@ -1,11 +1,11 @@
+mod error;
+mod executor;
 mod lexer;
 mod parser;
-mod executor;
-mod error;
 mod platform;
 
-use std::env;
 use error::TskError;
+use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -36,11 +36,17 @@ fn run(args: Vec<String>) -> Result<(), TskError> {
                     return Err(TskError::cli("--file requires a path argument"));
                 }
             }
-            "--list" | "-l"      => show_list = true,
-            "--dry-run" | "-n"   => dry_run = true,
-            "--silent" | "-s"    => no_echo = true,
-            "--help"   | "-h"    => { print_help(); return Ok(()); }
-            "--version"| "-V"    => { println!("tsk {}", env!("CARGO_PKG_VERSION")); return Ok(()); }
+            "--list" | "-l" => show_list = true,
+            "--dry-run" | "-n" => dry_run = true,
+            "--silent" | "-s" => no_echo = true,
+            "--help" | "-h" => {
+                print_help();
+                return Ok(());
+            }
+            "--version" | "-V" => {
+                println!("tsk {}", env!("CARGO_PKG_VERSION"));
+                return Ok(());
+            }
             arg if !arg.starts_with('-') && task_name.is_none() => {
                 task_name = Some(arg.to_string());
             }
@@ -53,7 +59,7 @@ fn run(args: Vec<String>) -> Result<(), TskError> {
 
     let path = match taskfile_path {
         Some(p) => p,
-        None    => find_taskfile()?,
+        None => find_taskfile()?,
     };
 
     let source = std::fs::read_to_string(&path)
@@ -75,11 +81,11 @@ fn run(args: Vec<String>) -> Result<(), TskError> {
                 print_task_list(&taskfile, &path);
                 return Ok(());
             }
-        }
+        },
     };
 
     let mut exec = executor::Executor::new(taskfile);
-    exec.echo    = !no_echo && !dry_run;
+    exec.echo = !no_echo && !dry_run;
     exec.dry_run = dry_run;
     exec.run(&task)?;
 
@@ -96,10 +102,14 @@ fn print_task_list(taskfile: &parser::Taskfile, path: &str) {
     names.sort();
     for name in names {
         let task = &taskfile.tasks[name];
-        let default_marker = if taskfile.default_task.as_deref() == Some(name) { " (default)" } else { "" };
+        let default_marker = if taskfile.default_task.as_deref() == Some(name) {
+            " (default)"
+        } else {
+            ""
+        };
         match &task.description {
             Some(d) => println!("  {:<20} {}{}", name, d, default_marker),
-            None    => println!("  {}{}", name, default_marker),
+            None => println!("  {}{}", name, default_marker),
         }
     }
 }
@@ -114,7 +124,9 @@ fn find_taskfile() -> Result<String, TskError> {
                 return Ok(p.to_string_lossy().into_owned());
             }
         }
-        if !dir.pop() { break; }
+        if !dir.pop() {
+            break;
+        }
     }
     Err(TskError::cli(
         "no Taskfile.tsk found in current or parent directories. Use --file to specify one.",
@@ -122,7 +134,8 @@ fn find_taskfile() -> Result<String, TskError> {
 }
 
 fn print_help() {
-    println!(r#"tsk {} - lightweight task runner
+    println!(
+        r#"tsk {} - lightweight task runner
 
 USAGE:
     tsk [FLAGS] [task]
@@ -134,5 +147,7 @@ FLAGS:
     -s, --silent         Suppress command echo
     -h, --help           Print this help
     -V, --version        Print version
-"#, env!("CARGO_PKG_VERSION"));
+"#,
+        env!("CARGO_PKG_VERSION")
+    );
 }
