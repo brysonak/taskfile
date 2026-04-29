@@ -255,7 +255,7 @@ fn try_builtin(cmd: &str) -> Option<Result<(), String>> {
             if let Some(eq) = rest.find('=') {
                 let key = rest[..eq].trim();
                 let val = rest[eq + 1..].trim();
-                // Even though tsk if single-threaded, the compiler will yell at me if this isn't unsafe
+                // Even though tsk is single-threaded, the compiler will yell at me if this isn't unsafe
                 // because of some weird multithreading concerns set_var causes.... Hm
                 unsafe {
                     std::env::set_var(key, val);
