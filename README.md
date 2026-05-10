@@ -14,3 +14,7 @@ build {
 
 See [docs/syntax.md](docs/syntax.md) for the full language reference
 
+# Installing
+
+## Windows
+Download the `tsk-setup.exe` binary from the [releases section](https://github.com/brysonak/taskfile/releases) and run it

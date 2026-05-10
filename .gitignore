@@ -1,8 +1,9 @@
 /target
-test/test
 
 # Added by cargo
 #
 # already existing elements were commented out
 
 #/target
+test/test
+install/tsk-setup.exe
