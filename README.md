@@ -25,3 +25,17 @@ curl -fsSL https://raw.githubusercontent.com/brysonak/taskfile/refs/heads/main/i
 
 ## Windows
 Download the `tsk-setup.exe` binary from the [releases section](https://github.com/brysonak/taskfile/releases) and run it
+
+# Building
+Before you build, make sure you have the following pre-requisites:
+- [git](https://git-scm.com/)
+- [rust](https://rust-lang.org/tools/install/)
+
+**Run these commands in order**
+```bash
+git clone https://github.com/brysonak/taskfile.git
+
+cd taskfile
+
+cargo build --release
+```
