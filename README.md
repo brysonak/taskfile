@@ -16,5 +16,12 @@ See [docs/syntax.md](docs/syntax.md) for the full language reference
 
 # Installing
 
+## Linux
+Run:
+```bash
+curl -fsSL https://raw.githubusercontent.com/brysonak/taskfile/refs/heads/main/install/install.sh | sh
+```
+**Note:** This will ask for permissions, as it copies the binary to `/usr/bin`
+
 ## Windows
 Download the `tsk-setup.exe` binary from the [releases section](https://github.com/brysonak/taskfile/releases) and run it
