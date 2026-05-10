@@ -38,6 +38,9 @@ pub enum TskError {
         message: String,
         command: Option<String>,
     },
+    /// @error directive - user-defined abort message (exit 1)
+    /// (@ignore directive does not affect this, @error is always fatal)
+    UserError(String),
 }
 
 impl TskError {
@@ -72,6 +75,7 @@ impl TskError {
             TskError::Cli(_) => 1,
             TskError::Syntax { .. } => 2,
             TskError::Runtime { .. } => 3,
+            TskError::UserError(_) => 1,
         }
     }
 }
@@ -104,6 +108,9 @@ impl fmt::Display for TskError {
                     write!(f, "\n  command: {}", cmd)?;
                 }
                 Ok(())
+            }
+            TskError::UserError(msg) => {
+                write!(f, "tsk: {}", msg)
             }
         }
     }

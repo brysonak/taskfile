@@ -11,11 +11,6 @@ build {
     $CC main.c -o main
 }
 ```
-Then, you'd run ``tsk`` in that directory, and that's it!
 
-I plan to write lots of documentation for this in the time that follows
+See [docs/syntax.md](docs/syntax.md) for the full language reference
 
-# Build Instructions
-Coming soon *tm*
-
-The tool is a little more oriented towards linux/macos right now, but I am testing a windows build soon too.

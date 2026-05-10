@@ -205,6 +205,22 @@ fn lex_line(line: &str, line_no: usize, out: &mut Vec<Token>) {
 fn lex_non_brace_line(line: &str, line_no: usize, out: &mut Vec<Token>) {
     if line.starts_with('@') {
         let rest = &line[1..];
+
+        // @error("msg") or @error(msg) - extract the inner content from the parens
+        if rest.starts_with("error(") && rest.ends_with(')') {
+            let inner = &rest[6..rest.len() - 1];
+            let msg = inner.trim_matches(|c| c == '"' || c == '\'').to_string();
+            out.push(Token {
+                kind: TokenKind::Ident("@error".to_string()),
+                line: line_no,
+            });
+            out.push(Token {
+                kind: TokenKind::RawValue(msg),
+                line: line_no,
+            });
+            return;
+        }
+
         let (kw, val) = split_first_word(rest);
         out.push(Token {
             kind: TokenKind::Ident(format!("@{}", kw)),

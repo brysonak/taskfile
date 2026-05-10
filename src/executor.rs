@@ -131,7 +131,7 @@ impl Executor {
 
     /// Walk statements and collect raw (unexpanded) command lines
     /// Expansion happens at exec time so that dynamic vars like $$CWD reflect
-    /// state changes from earlier commands (e.g. cd).
+    /// state changes from earlier commands (e.g. cd)
     fn collect_statements(
         &self,
         stmts: &[Statement],
@@ -142,6 +142,10 @@ impl Executor {
                 Statement::Command { raw, line } => {
                     // Store raw, expand later at exec_line time
                     out.push((raw.clone(), *line, false));
+                }
+                Statement::Error { message, line: _ } => {
+                    let expanded = expand_vars(message, &self.user_vars, &self.sys_vars);
+                    return Err(TskError::UserError(expanded));
                 }
                 Statement::If {
                     condition,
@@ -265,7 +269,9 @@ fn try_builtin(cmd: &str) -> Option<Result<(), String>> {
     match verb {
         "cd" => {
             let dir = if rest.is_empty() {
-                std::env::var("HOME").unwrap_or_else(|_| ".".into())
+                std::env::var("HOME")
+                    .or_else(|_| std::env::var("USERPROFILE"))
+                    .unwrap_or_else(|_| ".".into())
             } else {
                 rest.to_string()
             };
@@ -277,6 +283,17 @@ fn try_builtin(cmd: &str) -> Option<Result<(), String>> {
                 let val = rest[eq + 1..].trim();
                 // Even though tsk is single-threaded, the compiler will yell at me if this isn't unsafe
                 // because of some weird multithreading concerns set_var causes.... Hm
+                unsafe {
+                    std::env::set_var(key, val);
+                }
+            }
+            Some(Ok(()))
+        }
+        // `set KEY=VAL` - windows equivalent of export, also accepted on unix for portability
+        "set" if cfg!(target_os = "windows") || rest.contains('=') => {
+            if let Some(eq) = rest.find('=') {
+                let key = rest[..eq].trim();
+                let val = rest[eq + 1..].trim();
                 unsafe {
                     std::env::set_var(key, val);
                 }

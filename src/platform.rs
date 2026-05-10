@@ -33,12 +33,8 @@ pub fn system_vars() -> HashMap<String, String> {
         .unwrap_or_default();
     map.insert("HOME".to_string(), home);
 
-    let cwd = env::current_dir()
-        .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    map.insert("CWD".to_string(), cwd);
-
-    let shell = env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
+    // CWD is intentionally omitted here; expand_vars reads it dynamically
+    let shell = shell_path();
     map.insert("SHELL".to_string(), shell);
 
     let user = env::var("USER")
@@ -68,10 +64,20 @@ fn detect_os() -> String {
     env::consts::OS.to_string()
 }
 
+/// Returns the users preferred shell binary as a string.
+/// On Windows this is cmd.exe; on Unix it reads $SHELL with a /bin/sh fallback.
+fn shell_path() -> String {
+    if cfg!(target_os = "windows") {
+        "cmd.exe".to_string()
+    } else {
+        env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string())
+    }
+}
+
 /// Returns `(shell_binary, flag)` for spawning commands
 pub fn shell() -> (String, String) {
     if cfg!(target_os = "windows") {
-        ("cmd".to_string(), "/C".to_string())
+        ("cmd.exe".to_string(), "/C".to_string())
     } else {
         let sh = env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
         (sh, "-c".to_string())

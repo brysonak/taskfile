@@ -47,12 +47,14 @@ pub enum Statement {
         else_body: Vec<Statement>,
         line: usize,
     },
+    /// @error("msg") - print message to stderr and abort the task immediately
+    Error { message: String, line: usize },
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct TaskFlags {
-    pub silent: bool, // @silent — don't echo commands
-    pub ignore: bool, // @ignore — continue on command failure
+    pub silent: bool, // @silent - don't echo commands
+    pub ignore: bool, // @ignore - continue on command failure
 }
 
 #[derive(Debug, Clone)]
@@ -298,6 +300,19 @@ impl<'a> Parser<'a> {
                             flags.ignore = true;
                             self.skip_newlines();
                         }
+                        "@error" => {
+                            let err_line = self.peek().line;
+                            self.advance();
+                            let msg = match self.peek().kind.clone() {
+                                TokenKind::RawValue(v) => {
+                                    self.advance();
+                                    v
+                                }
+                                _ => String::new(),
+                            };
+                            body.push(Statement::Error { message: msg, line: err_line });
+                            self.skip_newlines();
+                        }
                         "if" => {
                             let if_line = self.peek().line;
                             self.advance();
@@ -459,6 +474,19 @@ impl<'a> Parser<'a> {
                     let line = self.peek().line;
                     self.advance();
                     stmts.push(self.parse_if(line)?);
+                }
+                TokenKind::Ident(ref kw) if kw == "@error" => {
+                    let line = self.peek().line;
+                    self.advance();
+                    let msg = match self.peek().kind.clone() {
+                        TokenKind::RawValue(v) => {
+                            self.advance();
+                            v
+                        }
+                        _ => String::new(),
+                    };
+                    self.skip_newlines();
+                    stmts.push(Statement::Error { message: msg, line });
                 }
                 TokenKind::RawValue(cmd) => {
                     let line = self.peek().line;

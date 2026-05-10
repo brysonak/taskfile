@@ -12,12 +12,6 @@ dev {
     cargo build
 }
 
-run {
-    @desc Build and run with --help
-    @deps build
-    ./target/release/$BIN --help
-}
-
 install {
     @desc Install to $INSTALL (Will fail without sudo)
     @deps build 
