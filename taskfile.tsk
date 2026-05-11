@@ -15,10 +15,14 @@ dev {
 install {
     @desc Install to $INSTALL (Will fail without sudo)
     @deps build 
+    if $$OS == windows {
+    @error("This install directive is for linux, compile the installer with ISS for windows.")
+    } else {
     strip target/release/$BIN
     rm -f $INSTALL/$BIN
     cp target/release/$BIN $INSTALL/$BIN
     echo "Installed"
+    }
 }
 
 remove {
