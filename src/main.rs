@@ -44,6 +44,7 @@ fn run(args: Vec<String>) -> Result<(), TskError> {
     let mut show_list = false;
     let mut dry_run = false;
     let mut no_echo = false;
+    let mut ignore_deps = false;
     let mut i = 1;
 
     while i < args.len() {
@@ -59,6 +60,7 @@ fn run(args: Vec<String>) -> Result<(), TskError> {
             "--list" | "-l" => show_list = true,
             "--dry-run" | "-n" => dry_run = true,
             "--silent" | "-s" => no_echo = true,
+            "--ignore-deps" | "-i" => ignore_deps = true,
             "--help" | "-h" => {
                 print_help();
                 return Ok(());
@@ -98,8 +100,20 @@ fn run(args: Vec<String>) -> Result<(), TskError> {
         None => match &taskfile.default_task {
             Some(d) => d.clone(),
             None => {
-                print_task_list(&taskfile, &path);
-                return Ok(());
+                // Fall back to the first defined task with a warning
+                match taskfile.task_order.first() {
+                    Some(first) => {
+                        eprintln!(
+                            "tsk: warning: '@default' directive was not specified. Using first defined task '{}'.",
+                            first
+                        );
+                        first.clone()
+                    }
+                    None => {
+                        print_task_list(&taskfile, &path);
+                        return Ok(());
+                    }
+                }
             }
         },
     };
@@ -107,6 +121,7 @@ fn run(args: Vec<String>) -> Result<(), TskError> {
     let mut exec = executor::Executor::new(taskfile);
     exec.echo = !no_echo && !dry_run;
     exec.dry_run = dry_run;
+    exec.ignore_deps = ignore_deps;
     exec.run(&task)?;
 
     Ok(())
@@ -136,7 +151,8 @@ fn print_task_list(taskfile: &parser::Taskfile, path: &str) {
 
 fn find_taskfile() -> Result<String, TskError> {
     let candidates = ["Taskfile.tsk", "taskfile.tsk", ".tsk"];
-    let mut dir = env::current_dir().unwrap_or_default();
+    let mut dir = env::current_dir()
+        .map_err(|e| TskError::cli(format!("cannot determine current directory: {}", e)))?;
     loop {
         for c in &candidates {
             let p = dir.join(c);
@@ -165,6 +181,7 @@ FLAGS:
     -l, --list           List all available tasks
     -n, --dry-run        Print commands without running them
     -s, --silent         Suppress command echo
+    -i, --ignore-deps    Skip @deps for the specified task
     -h, --help           Print this help
     -V, --version        Print version
 "#,

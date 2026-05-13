@@ -35,8 +35,11 @@ pub struct Executor {
     pub echo: bool,
     /// Don't actually run commands
     pub dry_run: bool,
-    /// Track tasks currently executing to prevent cycles
+    /// Skip @deps for the root task only, deps of deps still run normally
+    pub ignore_deps: bool,
     running: Vec<String>,
+    /// Whether the current run() call is the root (user-invoked) task
+    is_root_call: bool,
 }
 
 impl Executor {
@@ -60,7 +63,9 @@ impl Executor {
             sys_vars,
             echo: true,
             dry_run: false,
+            ignore_deps: false,
             running: Vec::new(),
+            is_root_call: true,
         }
     }
 
@@ -92,18 +97,28 @@ impl Executor {
                         .collect::<Vec<_>>()
                         .join(", ")
                 };
-                return Err(TskError::cli(format!(
-                    "task '{}' not found.\nAvailable tasks: {}",
-                    task_name, list
-                )));
+                return Err(TskError::runtime(
+                    task_name,
+                    0,
+                    format!("task not found.\nAvailable tasks: {}", list),
+                    None,
+                ));
             }
         };
 
         // Run dependencies first
         let deps = task.deps.clone();
         self.running.push(task_name.to_string());
-        for dep in &deps {
-            self.run(dep)?;
+
+        // ignore_deps only skips deps for the root invocation, not transitive ones
+        let skip_deps = self.ignore_deps && self.is_root_call;
+        if !skip_deps {
+            let was_root = self.is_root_call;
+            self.is_root_call = false;
+            for dep in &deps {
+                self.run(dep)?;
+            }
+            self.is_root_call = was_root;
         }
 
         self.exec_task(&task)?;

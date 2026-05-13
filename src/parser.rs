@@ -72,6 +72,8 @@ pub struct Taskfile {
     pub globals: HashMap<String, (String, usize)>,
     pub global_order: Vec<String>,
     pub tasks: HashMap<String, Task>,
+    /// Insertion order of task names, used for first-task fallback
+    pub task_order: Vec<String>,
     pub default_task: Option<String>,
 }
 
@@ -116,7 +118,7 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let t = self.peek().clone();
-                Err(TskError::syntax(self.file, t.line, "expected newline"))
+                Err(TskError::syntax(self.file, t.line, format!("expected newline, got {:?}", t.kind)))
             }
         }
     }
@@ -130,7 +132,7 @@ impl<'a> Parser<'a> {
                 self.skip_newlines();
                 Ok(t.line)
             }
-            _ => Err(TskError::syntax(self.file, t.line, "expected '{'")),
+            _ => Err(TskError::syntax(self.file, t.line, format!("expected '{{', got {:?}", t.kind))),
         }
     }
 
@@ -143,7 +145,7 @@ impl<'a> Parser<'a> {
                 self.skip_newlines();
                 Ok(())
             }
-            _ => Err(TskError::syntax(self.file, t.line, "expected '}'")),
+            _ => Err(TskError::syntax(self.file, t.line, format!("expected '}}', got {:?}", t.kind))),
         }
     }
 
@@ -151,6 +153,7 @@ impl<'a> Parser<'a> {
         let mut globals: HashMap<String, (String, usize)> = HashMap::new();
         let mut global_order: Vec<String> = Vec::new();
         let mut tasks: HashMap<String, Task> = HashMap::new();
+        let mut task_order: Vec<String> = Vec::new();
         let mut default_task: Option<String> = None;
 
         loop {
@@ -213,6 +216,8 @@ impl<'a> Parser<'a> {
 
                         if tasks.contains_key(&name) {
                             warn(format!("task '{}' redefined at line {}", name, task_line));
+                        } else {
+                            task_order.push(name.clone());
                         }
 
                         // Check if this task declared itself as default
@@ -240,6 +245,7 @@ impl<'a> Parser<'a> {
             globals,
             global_order,
             tasks,
+            task_order,
             default_task,
         })
     }
@@ -463,7 +469,7 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Ok(v)
             }
-            _ => Err(TskError::syntax(self.file, t.line, "expected value")),
+            _ => Err(TskError::syntax(self.file, t.line, format!("expected value, got {:?}", t.kind))),
         }
     }
 
@@ -526,7 +532,16 @@ pub fn parse(source: &str, file: &str) -> Result<Taskfile, TskError> {
         if task.body.is_empty() && task.deps.is_empty() {
             warn(format!("task '{}' has an empty body", name));
         }
+        for dep in &task.deps {
+            if !taskfile.tasks.contains_key(dep) {
+                return Err(TskError::syntax(
+                    file,
+                    0,
+                    format!("task '{}' depends on '{}', which does not exist", name, dep),
+                ));
+            }
+        }
     }
 
     Ok(taskfile)
-}
+} 

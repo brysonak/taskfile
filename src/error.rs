@@ -80,6 +80,8 @@ impl TskError {
     }
 }
 
+impl std::error::Error for TskError {}
+
 impl fmt::Display for TskError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

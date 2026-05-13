@@ -68,7 +68,7 @@ build {
 }
 ```
 
-Only one task should be marked `@default`. If multiple are, the last one wins.
+Only one task should be marked `@default`. If multiple are, the last one wins. If no task is marked `@default`, the first defined task runs with a warning.
 
 ### @desc
 
@@ -96,6 +96,8 @@ package {
     tar -czf dist.tar.gz build/
 }
 ```
+
+Use `--ignore-deps` to skip `@deps` for a specific invocation without modifying the taskfile.
 
 ### @silent
 
@@ -252,11 +254,12 @@ FLAGS:
     -l, --list           List all tasks and their descriptions
     -n, --dry-run        Print commands without running them
     -s, --silent         Suppress command echo for all tasks
+    -i, --ignore-deps    Skip @deps for the specified task
     -h, --help           Print help
     -V, --version        Print version
 ```
 
-If no task is given, the task marked `@default` runs. If there is no default, the task list is printed.
+If no task is given, the task marked `@default` runs. If there is no default, the first defined task runs with a warning. If there are no tasks at all, the task list is printed.
 
 `tsk` searches for a taskfile starting in the current directory and walking up to the filesystem root, so you can run `tsk` from anywhere inside your project tree.
 
